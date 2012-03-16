@@ -1,0 +1,4 @@
+* Finish HTML repo support
+* Cabinet: file selection: more generics and overrides
+* ConfigData
+* Pkgconfig handling/module functions
