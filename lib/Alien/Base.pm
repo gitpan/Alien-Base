@@ -3,7 +3,7 @@ package Alien::Base;
 use strict;
 use warnings;
 
-our $VERSION = '0.000_001';
+our $VERSION = '0.000_002';
 $VERSION = eval $VERSION;
 
 use Carp;
@@ -58,11 +58,6 @@ sub _keyword {
   my $self = shift;
   my $keyword = shift;
 
-  # use manually entered info if it exists
-  # alien_provides_*
-  my $manual_data = $self->config($keyword);
-  return $manual_data if defined $manual_data;
-
   # use pkg-config if installed system-wide
   my $type = $self->config('install_type');
   if ($type eq 'system') {
@@ -85,8 +80,16 @@ sub _keyword {
 sub pkgconfig {
   my $self = shift;
   my %all = %{ $self->config('pkgconfig') };
-  return values %all unless @_;
-  return @all{@_};
+
+  return @all{@_} if @_;
+
+  my $manual = delete $all{_manual};
+
+  if (keys %all) {
+    return values %all;
+  } else {
+    return $manual;
+  }
 }
 
 # helper method to call Alien::MyLib::ConfigData->config(@_)

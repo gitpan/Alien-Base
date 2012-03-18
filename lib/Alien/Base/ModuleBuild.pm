@@ -3,7 +3,7 @@ package Alien::Base::ModuleBuild;
 use strict;
 use warnings;
 
-our $VERSION = '0.000_001';
+our $VERSION = '0.000_002';
 $VERSION = eval $VERSION;
 
 use parent 'Module::Build';
@@ -14,6 +14,7 @@ use File::Spec;
 use Carp;
 use Archive::Extract;
 use Sort::Versions;
+use List::MoreUtils qw/uniq/;
 
 use Alien::Base::PkgConfig;
 use Alien::Base::ModuleBuild::Cabinet;
@@ -32,8 +33,11 @@ my %default_repository_class = (
   local   => 'Alien::Base::ModuleBuild::Repository::Local',
 );
 
-our $Verbose ||= $ENV{ALIEN_VERBOSE};
-our $Force   ||= $ENV{ALIEN_FORCE};
+our $Verbose;
+$Verbose = $ENV{ALIEN_VERBOSE} if defined $ENV{ALIEN_VERBOSE};
+
+our $Force;
+$Force = $ENV{ALIEN_FORCE} if defined $ENV{ALIEN_FORCE};
 
 ################
 #  Parameters  #
@@ -199,19 +203,6 @@ sub alien_init_temp_dir {
   }
 }
 
-sub alien_init_configdata {
-  my $self = shift;
-
-  my $cflags = $self->alien_provides_cflags;
-  $self->config_data( Cflags => $cflags );
-
-  my $libs   = $self->alien_provides_libs;
-  $self->config_data( Libs   => $libs   );
-
-  my $name = $self->alien_name;
-  $self->config_data( name   => $name   );
-}
-
 ####################
 #  ACTION methods  #
 ####################
@@ -225,7 +216,7 @@ sub ACTION_code {
 sub ACTION_alien {
   my $self = shift;
 
-  $self->alien_init_configdata;
+  $self->config_data( name => $self->alien_name );
 
   my $version;
   $version = $self->alien_check_installed_version
@@ -411,17 +402,186 @@ sub alien_load_pkgconfig {
   my $dir = $self->config_data('build_share_dir');
   my $pc_files = $self->rscan_dir( $dir, qr/\.pc$/ );
 
-  return unless @$pc_files;  
-
   my %pc_objects = map { 
     my $pc = Alien::Base::PkgConfig->new($_);
     $pc->make_abstract( alien_dist_dir => $dir );
     ($pc->{package}, $pc)
   } @$pc_files;
 
+  my $manual_pc = $self->alien_generate_manual_pkgconfig($dir);
+
+  $pc_objects{_manual} = $manual_pc;
+
   $self->config_data( pkgconfig => \%pc_objects );
   return \%pc_objects;
 }
 
+sub alien_generate_manual_pkgconfig {
+  my $self = shift;
+  my ($dir) = @_;
+
+  my $paths = $self->alien_find_lib_paths($dir);
+
+  my @L = 
+    map { File::Spec->catdir( '-L${alien_dist_dir}', $_ ) }
+    @{$paths->{lib}};
+
+  my $provides_libs = $self->alien_provides_libs;
+
+  #if no provides_libs then generate -l list from found files
+  unless ($provides_libs) {
+    my @files = map { "-l$_" } @{$paths->{files}};
+    $provides_libs = join( ' ', @files );
+  } 
+
+  my $libs = join( ' ', @L, $provides_libs );
+
+  my @I = 
+    map { File::Spec->catdir( '-I${alien_dist_dir}', $_ ) }
+    @{$paths->{inc}};
+
+  my $provides_cflags = $self->alien_provides_cflags;
+  push @I, $provides_cflags if $provides_cflags;
+  my $cflags = join( ' ', @I );
+
+  my $manual_pc = Alien::Base::PkgConfig->new({
+    package  => $self->alien_name,
+    vars     => {
+      alien_dist_dir => $dir,
+    },
+    keywords => {
+      Cflags  => $cflags,
+      Libs    => $libs,
+    },
+  });
+
+  return $manual_pc;
+}
+
+sub alien_find_lib_paths {
+  my $self = shift;
+  my ($dir) = @_;
+
+  my $libs = $self->alien_provides_libs;
+  my @libs;
+  @libs = map { /-l(.*)/ ? $1 : () } split /\s+/, $libs if $libs;
+  $libs[0] = '' unless @libs; #find all so files if no provides_libs;
+
+  my $ext = $self->config('so'); #platform specific .so extension
+
+  my @so_files = sort #easier testing
+    map { File::Spec->abs2rel( $_, $dir ) } # make relative to $dir
+    map { @{ $self->rscan_dir($dir, qr/$_\.$ext$/) } } #find all .so
+    @libs;
+
+  my @lib_paths = uniq
+    map { File::Spec->catdir($_) } # remove trailing /
+    map { ( File::Spec->splitpath($_) )[1] } # get only directory
+    @so_files;
+
+  @so_files = 
+    map { my $file = $_; $file =~ s/^(?:lib)?(.*?)\.$ext$/$1/; $file }
+    map { ( File::Spec->splitpath($_) )[2] } 
+    @so_files;
+
+  my @inc_paths = uniq
+    map { File::Spec->catdir($_) } # remove trailing /
+    map { ( File::Spec->splitpath($_) )[1] } # get only directory
+    map { File::Spec->abs2rel( $_, $dir ) } # make relative to $dir
+    map { @{ $self->rscan_dir($dir, qr/$_\.h$/) } } #find all .so
+    @libs;
+
+  return { lib => \@lib_paths, inc => \@inc_paths, so_files => \@so_files };
+}
+
 1;
+
+__END__
+__POD__
+
+=head1 NAME
+
+Alien::Base::ModuleBuild - A Module::Build subclass for building Alien:: modules and their libraries
+
+=head1 SYNOPSIS
+
+=head1 DESCRIPTION
+
+=head1 GUIDE TO DOCUMENTATION
+
+The documentation for C<Module::Build> is broken up into sections:
+ 
+=over
+
+=item General Usage (L<Module::Build>)
+ 
+This is the landing document for L<Alien::Base::ModuleBuild>'s parent class.
+It describes basic usage and background information.
+Its main purpose is to assist the user who wants to learn how to invoke 
+and control C<Module::Build> scripts at the command line.
+
+It also lists the extra documentation for its use. Users and authors of Alien:: 
+modules should familiarize themselves with these documents. L<Module::Build::API>
+is of particular importance to authors. 
+ 
+=item Alien-Specific Usage (L<Alien::Base::ModuleBuild>)
+ 
+This is the document you are currently reading.
+ 
+=item Authoring Reference (L<Alien::Base::Authoring>)
+ 
+This document describes the structure and organization of 
+C<Alien::Base> based projects, beyond that contained in
+C<Module::Build::Authoring>, and the relevant concepts needed by authors who are
+writing F<Build.PL> scripts for a distribution or controlling
+C<Alien::Base::ModuleBuild> processes programmatically.
+
+Note that as it contains information both for the build and use phases of 
+L<Alien::Base> projects, it is located in the upper namespace.
+ 
+=item API Reference (L<Alien::Base::ModuleBuild::API>)
+ 
+This is a reference to the C<Alien::Base::ModuleBuild> API beyond that contained
+in C<Module::Build::API>.
+ 
+=back
+
+=head1 AUTHOR
+
+Joel Berger <joel.a.berger@gmail.com>
+
+=head1 SEE ALSO
+
+=over
+
+=item * 
+
+L<Module::Build>
+
+=item *
+
+L<Alien>
+
+=item *
+
+L<Alien::Base>
+
+=back
+
+=head1 SOURCE REPOSITORY
+
+L<http://github.com/jberger/Alien-Base>
+
+=head1 AUTHOR
+
+Joel Berger, E<lt>joel.a.berger@gmail.comE<gt>
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright (C) 2012 by Joel Berger
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
+
+=cut
 
