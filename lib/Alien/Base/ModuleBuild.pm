@@ -3,7 +3,7 @@ package Alien::Base::ModuleBuild;
 use strict;
 use warnings;
 
-our $VERSION = '0.000_003';
+our $VERSION = '0.000_004';
 $VERSION = eval $VERSION;
 
 use parent 'Module::Build';
@@ -271,7 +271,9 @@ sub ACTION_alien {
   $self->config_data( install_type => 'share' );
 
   my $pc = $self->alien_load_pkgconfig;
-  my $pc_version = $pc->{$self->alien_name}->keyword('Version');
+  my $pc_version = (
+    $pc->{$self->alien_name} || $pc->{_manual}
+  )->keyword('Version');
 
   if (! $version and ! $pc_version) {
     carp "Library looks like it installed, but no version was determined";
@@ -408,9 +410,8 @@ sub alien_load_pkgconfig {
     ($pc->{package}, $pc)
   } @$pc_files;
 
-  my $manual_pc = $self->alien_generate_manual_pkgconfig($dir);
-
-  $pc_objects{_manual} = $manual_pc;
+  $pc_objects{_manual} = $self->alien_generate_manual_pkgconfig($dir)
+    or croak "Could not autogenerate pkgconfig information";
 
   $self->config_data( pkgconfig => \%pc_objects );
   return \%pc_objects;

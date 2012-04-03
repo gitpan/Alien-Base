@@ -4,7 +4,7 @@ package Alien::Base::ModuleBuild::Utils;
 use strict;
 use warnings;
 
-our $VERSION = '0.000_003';
+our $VERSION = '0.000_004';
 $VERSION = eval $VERSION;
 
 use Text::Balanced qw/extract_bracketed extract_delimited extract_multiple/;
@@ -37,7 +37,7 @@ sub extract_href {
     $text =~ s/^$delim//;
     $text =~ s/$delim$//;
     return $text;
-  } elsif ($tag =~ /href=(.*?)(?:\s|\n|>)/) {
+  } elsif ($tag =~ /href=(.*?)(?:\s|\n|>)/i) {
     return $1;
   } else {
     return ();

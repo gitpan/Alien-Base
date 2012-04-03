@@ -3,7 +3,7 @@ package Alien::Base;
 use strict;
 use warnings;
 
-our $VERSION = '0.000_003';
+our $VERSION = '0.000_004';
 $VERSION = eval $VERSION;
 
 use Carp;
@@ -17,6 +17,8 @@ use Capture::Tiny qw/capture_merged/;
 
 sub import {
   my $class = shift;
+
+  return if $class->install_type('system');
 
   my $libs = $class->libs;
 
@@ -55,13 +57,18 @@ sub libs {
   return $self->_keyword('Libs', @_);
 }
 
+sub install_type {
+  my $self = shift;
+  my $type = $self->config('install_type');
+  return @_ ? $type eq $_[0] : $type;
+}
+
 sub _keyword {
   my $self = shift;
   my $keyword = shift;
 
   # use pkg-config if installed system-wide
-  my $type = $self->config('install_type');
-  if ($type eq 'system') {
+  if ($self->install_type('system')) {
     my $name = $self->config('name');
     my $command = "pkg-config --\L$keyword\E $name";
 
@@ -86,6 +93,9 @@ sub _keyword {
 sub pkgconfig {
   my $self = shift;
   my %all = %{ $self->config('pkgconfig') };
+
+  croak "No Alien::Base::PkgConfig objects are stored!"
+    unless keys %all;
 
   return @all{@_} if @_;
 
