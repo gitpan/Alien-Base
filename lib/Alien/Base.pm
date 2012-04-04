@@ -3,7 +3,7 @@ package Alien::Base;
 use strict;
 use warnings;
 
-our $VERSION = '0.000_005';
+our $VERSION = '0.000_006';
 $VERSION = eval $VERSION;
 
 use Carp;
@@ -26,11 +26,11 @@ sub import {
 
   #TODO investigate using Env module for this (VMS problems?)
   my $var = is_os_type('Windows') ? 'PATH' : 'LD_RUN_PATH';
-  my @LL = @L;
-  unshift @LL, $ENV{$var} if $ENV{$var};
+
+  unshift @L, $ENV{$var} if $ENV{$var};
 
   no strict 'refs';
-  $ENV{$var} = join( $Config::Config{path_sep}, @LL ) 
+  $ENV{$var} = join( $Config::Config{path_sep}, @L ) 
     unless ${ $class . "::AlienEnv" }{$var}++;
     # %Alien::MyLib::AlienEnv has keys like ENV_VAR => int (true if loaded)
 
@@ -39,10 +39,13 @@ sub import {
 sub dist_dir {
   my $class = shift;
 
-  my $dist = $class;
+  my $dist = blessed $class || $class;
   $dist =~ s/::/-/g;
 
-  return eval { File::ShareDir::dist_dir $dist } or $class->{build_share_dir};
+  # This line will not work as expected when upgrading (i.e. when a version is already installed, but installing a new version)
+  my $dist_dir = eval { File::ShareDir::dist_dir($dist) } || $class->config('build_share_dir');
+
+  return $dist_dir;
 }
 
 sub new { return bless {}, $_[0] }
@@ -96,6 +99,12 @@ sub pkgconfig {
 
   croak "No Alien::Base::PkgConfig objects are stored!"
     unless keys %all;
+  
+  # Run through all pkgconfig objects and ensure that their modules are loaded:
+  for my $pkg_obj (values %all) {
+    my $perl_module_name = blessed $pkg_obj;
+    eval "require $perl_module_name"; 
+  }
 
   return @all{@_} if @_;
 

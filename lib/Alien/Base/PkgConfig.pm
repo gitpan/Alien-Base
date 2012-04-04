@@ -3,7 +3,7 @@ package Alien::Base::PkgConfig;
 use strict;
 use warnings;
 
-our $VERSION = '0.000_005';
+our $VERSION = '0.000_006';
 $VERSION = eval $VERSION;
 
 use Carp;
@@ -98,6 +98,13 @@ sub make_abstract {
 sub _interpolate_vars {
   my $self = shift;
   my ($string, $override) = @_;
+
+  $override ||= {};
+
+  foreach my $key (keys %$override) {
+    carp "Overriden pkg-config variable $key, contains no data" 
+      unless $override->{$key};
+  }
 
   1 while $string =~ s/\$\{(.*?)\}/$override->{$1} || $self->{vars}{$1}/e;
 
