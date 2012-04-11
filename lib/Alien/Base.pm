@@ -3,7 +3,7 @@ package Alien::Base;
 use strict;
 use warnings;
 
-our $VERSION = '0.000_007';
+our $VERSION = '0.000_008';
 $VERSION = eval $VERSION;
 
 use Carp;
@@ -28,6 +28,8 @@ sub import {
   my $var = is_os_type('Windows') ? 'PATH' : 'LD_RUN_PATH';
 
   unshift @L, $ENV{$var} if $ENV{$var};
+
+  #TODO check if existsin $ENV{$var} to prevent "used once" warnings
 
   no strict 'refs';
   $ENV{$var} = join( $Config::Config{path_sep}, @L ) 

@@ -3,7 +3,7 @@ package Alien::Base::ModuleBuild;
 use strict;
 use warnings;
 
-our $VERSION = '0.000_007';
+our $VERSION = '0.000_008';
 $VERSION = eval $VERSION;
 
 use parent 'Module::Build';
@@ -198,7 +198,7 @@ sub alien_init_temp_dir {
 
   # if install_dir does not exist, create AND mark for add_to_cleanup
   unless ( -d $install_dir ) {
-    mkdir $install_dir;
+    mkdir $install_dir or croak "Could not create temporary directory $install_dir";
     $self->add_to_cleanup( $install_dir );
   }
 }
@@ -352,6 +352,10 @@ sub alien_build {
 # also captures output if called in list context (returning a hash)
 sub do_system {
   my $self = shift;
+  local $CWD; # prevent global changes to working directory from system command
+  # note: if this doesn't fix the solaris problems, try storing this in a temp
+  #       variable and restore at end of method manually
+
   my @args = map { $self->alien_interpolate($_) } @_;
   if (wantarray) {
     my ($out, $err, $success) = capture { $self->SUPER::do_system(@args) };
