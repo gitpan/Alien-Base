@@ -3,10 +3,11 @@ package Alien::Base;
 use strict;
 use warnings;
 
-our $VERSION = '0.000_008';
+our $VERSION = '0.000_009';
 $VERSION = eval $VERSION;
 
 use Carp;
+use DynaLoader ();
 
 use File::chdir;
 use File::ShareDir ();
@@ -18,23 +19,41 @@ use Capture::Tiny qw/capture_merged/;
 sub import {
   my $class = shift;
 
+  # get a reference to %Alien::MyLibrary::AlienLoaded
+  # which contains names of already loaded libraries
+  # this logic may be replaced by investigating the DynaLoader arrays
+  my $loaded = do {
+    no strict 'refs';
+    \%{ $class . "::AlienLoaded" };
+  };
+
   return if $class->install_type('system');
 
   my $libs = $class->libs;
 
   my @L = $libs =~ /-L(\S+)/g;
+  my @l = $libs =~ /(-l\S+)/g;
 
-  #TODO investigate using Env module for this (VMS problems?)
-  my $var = is_os_type('Windows') ? 'PATH' : 'LD_RUN_PATH';
+  push @DynaLoader::dl_library_path, @L;
 
-  unshift @L, $ENV{$var} if $ENV{$var};
+  my @libpaths;
+  foreach my $l (@l) {
+    next if $loaded->{$l};
 
-  #TODO check if existsin $ENV{$var} to prevent "used once" warnings
+    my $path = DynaLoader::dl_findfile( $l );
+    unless ($path) {
+      carp "Could not resolve $l";
+      next;
+    }
 
-  no strict 'refs';
-  $ENV{$var} = join( $Config::Config{path_sep}, @L ) 
-    unless ${ $class . "::AlienEnv" }{$var}++;
-    # %Alien::MyLib::AlienEnv has keys like ENV_VAR => int (true if loaded)
+    push @libpaths, $path;
+    $loaded->{$l} = $path;
+  }
+
+  push @DynaLoader::dl_resolve_using, @libpaths;
+
+  my @librefs = map { DynaLoader::dl_load_file( $_ ) } @libpaths;
+  push @DynaLoader::dl_librefs, @librefs;
 
 }
 
