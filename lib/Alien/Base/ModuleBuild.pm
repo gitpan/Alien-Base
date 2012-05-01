@@ -3,7 +3,7 @@ package Alien::Base::ModuleBuild;
 use strict;
 use warnings;
 
-our $VERSION = '0.000_013';
+our $VERSION = '0.000_014';
 $VERSION = eval $VERSION;
 
 use parent 'Module::Build';
@@ -331,7 +331,7 @@ sub alien_build {
   foreach my $command (@$commands) {
     my $success = $self->do_system( $command );
     unless ($success) {
-      print "External command ($command) failed! Error: $?\n";
+      carp "External command ($command) failed! Error: $?\n";
       return 0;
     }
   }

@@ -3,7 +3,7 @@ package Alien::Base;
 use strict;
 use warnings;
 
-our $VERSION = '0.000_013';
+our $VERSION = '0.000_014';
 $VERSION = eval $VERSION;
 
 use Carp;
@@ -26,6 +26,7 @@ sub import {
   # this logic may be replaced by investigating the DynaLoader arrays
   my $loaded = do {
     no strict 'refs';
+    no warnings 'once';
     \%{ $class . "::AlienLoaded" };
   };
 
@@ -52,7 +53,7 @@ sub import {
 
   push @DynaLoader::dl_resolve_using, @libpaths;
 
-  my @librefs = map { DynaLoader::dl_load_file( $_ ) } @libpaths;
+  my @librefs = map { DynaLoader::dl_load_file( $_, 0x01 ) } @libpaths;
   push @DynaLoader::dl_librefs, @librefs;
 
 }
