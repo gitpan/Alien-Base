@@ -3,7 +3,7 @@ package Alien::Base::ModuleBuild;
 use strict;
 use warnings;
 
-our $VERSION = '0.000_014';
+our $VERSION = '0.000_015';
 $VERSION = eval $VERSION;
 
 use parent 'Module::Build';
@@ -384,6 +384,8 @@ sub alien_interpolate {
   $string =~ s/(?<!\%)\%p/$prefix/g;
   #   library name (ph: %n)
   $string =~ s/(?<!\%)\%n/$name/g;
+  #   current interpreter ($^X) (ph: %x)
+  $string =~ s/(?<!\%)\%x/$^X/g;
 
   #remove escapes (%%)
   $string =~ s/\%(?=\%)//g;
