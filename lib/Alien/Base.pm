@@ -3,7 +3,7 @@ package Alien::Base;
 use strict;
 use warnings;
 
-our $VERSION = '0.000_015';
+our $VERSION = '0.000_016';
 $VERSION = eval $VERSION;
 
 use Carp;
@@ -14,7 +14,7 @@ use File::ShareDir ();
 use Scalar::Util qw/blessed/;
 use Perl::OSType qw/is_os_type/;
 use Config;
-use Capture::Tiny qw/capture_merged/;
+use Capture::Tiny 0.17 qw/capture_merged/;
 
 sub import {
   my $class = shift;

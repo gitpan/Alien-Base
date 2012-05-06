@@ -3,12 +3,12 @@ package Alien::Base::ModuleBuild;
 use strict;
 use warnings;
 
-our $VERSION = '0.000_015';
+our $VERSION = '0.000_016';
 $VERSION = eval $VERSION;
 
 use parent 'Module::Build';
 
-use Capture::Tiny qw/capture tee/;
+use Capture::Tiny 0.17 qw/capture tee/;
 use File::chdir;
 use File::Spec;
 use Carp;
@@ -329,8 +329,8 @@ sub alien_build {
   my $commands = $self->alien_build_commands;
 
   foreach my $command (@$commands) {
-    my $success = $self->do_system( $command );
-    unless ($success) {
+    my %result = $self->do_system( $command );
+    unless ($result{success}) {
       carp "External command ($command) failed! Error: $?\n";
       return 0;
     }
@@ -385,7 +385,8 @@ sub alien_interpolate {
   #   library name (ph: %n)
   $string =~ s/(?<!\%)\%n/$name/g;
   #   current interpreter ($^X) (ph: %x)
-  $string =~ s/(?<!\%)\%x/$^X/g;
+  my $perl = $self->perl;
+  $string =~ s/(?<!\%)\%x/$perl/g;
 
   #remove escapes (%%)
   $string =~ s/\%(?=\%)//g;

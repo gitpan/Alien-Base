@@ -15,7 +15,7 @@ my $builder = Module::Build->new(
     'perl'             => '5.8.1',
     'parent'           => 0,
     'Module::Build'    => 0.36,
-    'Capture::Tiny'    => 0,
+    'Capture::Tiny'    => 0.17,
     'File::chdir'      => 0.1005,
     'Sort::Versions'   => 0,
     'List::MoreUtils'  => 0,
@@ -24,12 +24,9 @@ my $builder = Module::Build->new(
     'File::ShareDir'   => 0,
     'Archive::Extract' => 0,
     'HTTP::Tiny'       => 0,
-    # t/zz-example.t requires EU::LibBuilder, CPANtesters should require it
-    ( $ENV{AUTOMATED_TESTING} ? ('ExtUtils::LibBuilder' => 0) : () ),
   },
   recommends => {
     'HTML::LinkExtor' => 0,
-    'ExtUtils::LibBuilder' => 0,
   },
   meta_merge => {
     resources  => {
