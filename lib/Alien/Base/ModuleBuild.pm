@@ -3,7 +3,7 @@ package Alien::Base::ModuleBuild;
 use strict;
 use warnings;
 
-our $VERSION = '0.000_019';
+our $VERSION = '0.000_020';
 $VERSION = eval $VERSION;
 
 use parent 'Module::Build';
@@ -503,6 +503,24 @@ sub alien_find_lib_paths {
     @libs;
 
   return { lib => \@lib_paths, inc => \@inc_paths, so_files => \@so_files };
+}
+
+###########################
+#  Final Install Methods  #
+###########################
+
+# overload c_i_m to handle Mac's dylib relocalization
+sub copy_if_modified {
+  my $self = shift;
+  my $to_path = $self->SUPER::copy_if_modified(@_);
+
+  return $to_path unless $self->os_type() eq 'MacOS';
+  return $to_path unless $to_path =~ /\.dylib$/;
+
+  # handle dylib path relocalization
+  print "Todo: Handling Mac dylib paths\n";
+
+  return $to_path;
 }
 
 1;
