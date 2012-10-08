@@ -3,7 +3,7 @@ package Alien::Base;
 use strict;
 use warnings;
 
-our $VERSION = '0.000_021';
+our $VERSION = '0.000_022';
 $VERSION = eval $VERSION;
 
 use Carp;
@@ -15,6 +15,7 @@ use Scalar::Util qw/blessed/;
 use Perl::OSType qw/is_os_type/;
 use Config;
 use Capture::Tiny 0.17 qw/capture_merged/;
+use Text::ParseWords qw/shellwords/;
 
 sub import {
   my $class = shift;
@@ -30,10 +31,10 @@ sub import {
     \%{ $class . "::AlienLoaded" };
   };
 
-  my $libs = $class->libs;
+  my @libs = shellwords( $class->libs );
 
-  my @L = $libs =~ /-L(\S+)/g;
-  my @l = $libs =~ /(-l\S+)/g;
+  my @L = grep { s/^-L// } @libs;
+  my @l = grep { /^-l/ } @libs;
 
   push @DynaLoader::dl_library_path, @L;
 
@@ -64,8 +65,8 @@ sub dist_dir {
   my $dist = blessed $class || $class;
   $dist =~ s/::/-/g;
 
-  # This line will not work as expected when upgrading (i.e. when a version is already installed, but installing a new version)
-  my $dist_dir = eval { File::ShareDir::dist_dir($dist) } || $class->config('build_share_dir');
+
+  my $dist_dir = $class->config('finished_installing') ?  File::ShareDir::dist_dir($dist) : $class->config('working_directory');
 
   return $dist_dir;
 }
