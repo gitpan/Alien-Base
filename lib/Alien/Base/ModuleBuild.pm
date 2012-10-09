@@ -3,7 +3,7 @@ package Alien::Base::ModuleBuild;
 use strict;
 use warnings;
 
-our $VERSION = '0.000_022';
+our $VERSION = '0.001';
 $VERSION = eval $VERSION;
 
 use parent 'Module::Build';
@@ -571,8 +571,14 @@ sub alien_find_lib_paths {
     map { ( File::Spec->splitpath($_) )[1] } # get only directory
     @so_files;
 
-  @so_files = 
-    map { my $file = $_; $file =~ s/^(?:lib)?(.*?)\.$ext$/$1/; $file }
+  @so_files = uniq
+    map { 
+      my $file = $_;
+      1 while $file =~ s/\.\d+$//;
+      $file =~ s/^(?:lib)?(.*?)\.$ext$/$1/;
+      1 while $file =~ s/\.\d+$//;
+      $file 
+    }
     map { ( File::Spec->splitpath($_) )[2] } 
     @so_files;
 

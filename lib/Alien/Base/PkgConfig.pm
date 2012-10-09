@@ -3,7 +3,7 @@ package Alien::Base::PkgConfig;
 use strict;
 use warnings;
 
-our $VERSION = '0.000_022';
+our $VERSION = '0.001';
 $VERSION = eval $VERSION;
 
 use Carp;
@@ -43,9 +43,9 @@ sub read {
     or croak "Cannot open .pc file $path: $!";
 
   while (<$fh>) {
-    if (/(.*?)=(.*)/) {
+    if (/(.*?)=([^\n\r]*)/) {
       $self->{vars}{$1} = $2;
-    } elsif (/^(.*?):\s*(.*)/) {
+    } elsif (/^(.*?):\s*([^\n\r]*)/) {
       $self->{keywords}{$1} = $2;
     }
   }
