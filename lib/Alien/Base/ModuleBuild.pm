@@ -3,7 +3,7 @@ package Alien::Base::ModuleBuild;
 use strict;
 use warnings;
 
-our $VERSION = '0.001';
+our $VERSION = '0.001_001';
 $VERSION = eval $VERSION;
 
 use parent 'Module::Build';
@@ -15,6 +15,7 @@ use Carp;
 use Archive::Extract;
 use Sort::Versions;
 use List::MoreUtils qw/uniq/;
+use ExtUtils::Installed;
 
 use Alien::Base::PkgConfig;
 use Alien::Base::ModuleBuild::Cabinet;
@@ -295,12 +296,16 @@ sub ACTION_install {
     print "Done\n";
   }
 
+  # refresh metadata after library installation
   $self->alien_refresh_manual_pkgconfig( $self->alien_library_destination );
   $self->config_data( 'finished_installing' => 1 );
 
   # to refresh config_data
   $self->SUPER::ACTION_config_data;
   $self->SUPER::ACTION_install;
+
+  # refresh the packlist
+  $self->alien_refresh_packlist( $self->alien_library_destination );
 }
 
 #######################
@@ -557,14 +562,22 @@ sub alien_find_lib_paths {
   my $libs = $self->alien_provides_libs;
   my @libs;
   @libs = map { /-l(.*)/ ? $1 : () } split /\s+/, $libs if $libs;
-  $libs[0] = '' unless @libs; #find all so files if no provides_libs;
 
   my $ext = $self->config('so'); #platform specific .so extension
 
-  my @so_files = sort #easier testing
+  my @lib_patterns;
+  if ( @libs ) {
+    @lib_patterns = map { qr/\b(?:lib)?$_\.(.*?)$ext\b/ } @libs;
+  } else {
+    #find all so files if no provides_libs
+    @lib_patterns = ( qr/\.$ext\b/ );
+    @libs = ('');
+  }
+
+  my @so_files = sort
     map { File::Spec->abs2rel( $_, $dir ) } # make relative to $dir
-    map { @{ $self->rscan_dir($dir, qr/$_\.$ext$/) } } #find all .so
-    @libs;
+    map { @{ $self->rscan_dir($dir, $_) } } #find all .so
+    @lib_patterns;
 
   my @lib_paths = uniq
     map { File::Spec->catdir($_) } # remove trailing /
@@ -572,15 +585,11 @@ sub alien_find_lib_paths {
     @so_files;
 
   @so_files = uniq
-    map { 
-      my $file = $_;
-      1 while $file =~ s/\.\d+$//;
-      $file =~ s/^(?:lib)?(.*?)\.$ext$/$1/;
-      1 while $file =~ s/\.\d+$//;
-      $file 
-    }
+    map { /^(?:lib)?([^.]+)/ ? $1 : () }
     map { ( File::Spec->splitpath($_) )[2] } 
     @so_files;
+
+  @so_files = sort @so_files;
 
   my @inc_paths = uniq
     map { File::Spec->catdir($_) } # remove trailing /
@@ -590,6 +599,26 @@ sub alien_find_lib_paths {
     @libs;
 
   return { lib => \@lib_paths, inc => \@inc_paths, so_files => \@so_files };
+}
+
+sub alien_refresh_packlist {
+  my $self = shift;
+  my $dir = shift || croak "Must specify a directory to include in packlist";
+
+  my $inst = ExtUtils::Installed->new;
+  my $packlist = $inst->packlist( $self->module_name );
+  print "Using " .  $packlist->packlist_file . "\n";
+
+  my $changed = 0;
+  my $files = $self->rscan_dir($dir);
+  for my $file (@$files) {
+    next if $packlist->{$file};
+    print "Adding $file to packlist\n"; 
+    $changed++;
+    $packlist->{$file}++;
+  };
+
+  $packlist->write if $changed;
 }
 
 1;
