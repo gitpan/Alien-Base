@@ -3,17 +3,14 @@ package Alien::Base;
 use strict;
 use warnings;
 
-our $VERSION = '0.001_001';
+our $VERSION = '0.001_002';
 $VERSION = eval $VERSION;
 
 use Carp;
 use DynaLoader ();
 
-use File::chdir;
 use File::ShareDir ();
 use Scalar::Util qw/blessed/;
-use Perl::OSType qw/is_os_type/;
-use Config;
 use Capture::Tiny 0.17 qw/capture_merged/;
 use Text::ParseWords qw/shellwords/;
 
