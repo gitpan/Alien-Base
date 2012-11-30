@@ -3,7 +3,9 @@ package Alien::Base;
 use strict;
 use warnings;
 
-our $VERSION = '0.001_002';
+use Alien::Base::PkgConfig;
+
+our $VERSION = '0.001_003';
 $VERSION = eval $VERSION;
 
 use Carp;
@@ -63,7 +65,10 @@ sub dist_dir {
   $dist =~ s/::/-/g;
 
 
-  my $dist_dir = $class->config('finished_installing') ?  File::ShareDir::dist_dir($dist) : $class->config('working_directory');
+  my $dist_dir = 
+    $class->config('finished_installing') 
+      ? File::ShareDir::dist_dir($dist) 
+      : $class->config('working_directory');
 
   return $dist_dir;
 }
@@ -107,7 +112,9 @@ sub _keyword {
   my $dist_dir = $self->dist_dir;
   my @pc = $self->pkgconfig(@_);
   my @strings = 
-    map { $_->keyword($keyword, { alien_dist_dir => $dist_dir }) }
+    map { $_->keyword($keyword, 
+      #{ pcfiledir => $dist_dir }
+    ) }
     @pc;
 
   return join( ' ', @strings );
@@ -115,8 +122,16 @@ sub _keyword {
 
 sub pkgconfig {
   my $self = shift;
-  my %all = %{ $self->config('pkgconfig') };
-
+  #my %all = %{ $self->config('pkgconfig') };
+  require File::Find;
+  my %all;
+  my $wanted = sub {
+    return if ( -d or not /\.pc$/ );
+    my $pkg = Alien::Base::PkgConfig->new($_);
+    $all{$pkg->{package}} = $pkg;
+  };
+  File::Find::find( $wanted, $self->dist_dir );
+    
   croak "No Alien::Base::PkgConfig objects are stored!"
     unless keys %all;
   
