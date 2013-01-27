@@ -3,7 +3,7 @@ package Alien::Base::ModuleBuild;
 use strict;
 use warnings;
 
-our $VERSION = '0.001_003';
+our $VERSION = '0.002';
 $VERSION = eval $VERSION;
 
 use parent 'Module::Build';
@@ -231,11 +231,14 @@ sub ACTION_alien {
     $self->config_data( working_directory => $extract_path );
     $CWD = $extract_path;
 
-    print "Building library ... ";
-    unless ($self->alien_do_commands('build')) {
-      print "Failed\n";
-      croak "Build not completed";
+    if ( $file->platform eq 'src' ) {
+      print "Building library ... ";
+      unless ($self->alien_do_commands('build')) {
+        print "Failed\n";
+        croak "Build not completed";
+      }
     }
+
     print "Done\n";
 
   }
@@ -277,6 +280,7 @@ sub ACTION_test {
 sub ACTION_install {
   my $self = shift;
   $self->SUPER::ACTION_install;
+  return if $self->config_data( 'install_type' ) eq 'system';
 
   {
     my $target = $self->alien_library_destination;
