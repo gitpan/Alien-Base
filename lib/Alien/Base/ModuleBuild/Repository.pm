@@ -3,7 +3,7 @@ package Alien::Base::ModuleBuild::Repository;
 use strict;
 use warnings;
 
-our $VERSION = '0.003';
+our $VERSION = '0.004';
 $VERSION = eval $VERSION;
 
 use Carp;
@@ -80,6 +80,7 @@ sub probe {
 # subclasses are expected to provide 
 sub connection { croak "$_[0] doesn't provide 'connection' method" }
 sub list_files { croak "$_[0] doesn't provide 'list_files' method" }
+# get_file must return filename actually used
 sub get_file  { croak "$_[0] doesn't provide 'get_files' method"  }
 
 1;

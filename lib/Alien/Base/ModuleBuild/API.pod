@@ -206,6 +206,10 @@ Shortcut for the name stored in C<alien_name>
 
  pkg-config --modversion %n
 
+=item %v
+
+Captured version of the original archive.
+
 =item %x
 
 The current Perl interpreter (aka $^X)
@@ -232,7 +236,7 @@ L<Module::Build::API>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2012 by Joel Berger
+Copyright (C) 2012-2014 by Joel Berger
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.

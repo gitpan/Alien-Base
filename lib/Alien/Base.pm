@@ -5,7 +5,7 @@ use warnings;
 
 use Alien::Base::PkgConfig;
 
-our $VERSION = '0.003';
+our $VERSION = '0.004';
 $VERSION = eval $VERSION;
 
 use Carp;
@@ -213,9 +213,21 @@ L<http://github.com/jberger/Alien-Base>
 
 Joel Berger, E<lt>joel.a.berger@gmail.comE<gt>
 
+=head1 CONTRIBUTORS
+
+=over 
+
+=item David Mertens (run4flat)
+
+=item Mark Nunberg (mordy, mnunberg)
+
+=item Christian Walde (Mithaldu)
+
+=item Brian Wightman (MidLifeXis)
+
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2012 by Joel Berger
+Copyright (C) 2012-2014 by Joel Berger
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.

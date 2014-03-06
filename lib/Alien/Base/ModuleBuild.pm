@@ -3,7 +3,7 @@ package Alien::Base::ModuleBuild;
 use strict;
 use warnings;
 
-our $VERSION = '0.003';
+our $VERSION = '0.004';
 $VERSION = eval $VERSION;
 
 use parent 'Module::Build';
@@ -232,6 +232,7 @@ sub ACTION_alien_code {
 
     my $file = $cabinet->files->[0];
     $version = $file->version;
+    $self->config_data( version => $version ); # Temporary setting, may be overridden later
 
     print "Downloading File: " . $file->filename . " ... ";
     my $filename = $file->get;
@@ -516,7 +517,7 @@ sub alien_interpolate {
 
   my $prefix = $self->alien_exec_prefix;
   my $share  = $self->alien_library_destination;
-  my $name   = $self->alien_name;
+  my $name   = $self->alien_name || '';
 
   # substitute:
   #   install location share_dir (placeholder: %s)
@@ -528,6 +529,17 @@ sub alien_interpolate {
   #   current interpreter ($^X) (ph: %x)
   my $perl = $self->perl;
   $string =~ s/(?<!\%)\%x/$perl/g;
+
+  # Version, but only if needed.  Complain if needed and not yet
+  # stored.
+  if ($string =~ /(?<!\%)\%v/) {
+    my $version = $self->config_data( 'version' );
+    if ( ! defined( $version ) ) {
+      carp "Version substution requested but unable to identify";
+    } else {
+      $string =~ s/(?<!\%)\%v/$version/g;
+    }
+  }
 
   #remove escapes (%%)
   $string =~ s/\%(?=\%)//g;
@@ -780,7 +792,7 @@ Joel Berger, E<lt>joel.a.berger@gmail.comE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2012 by Joel Berger
+Copyright (C) 2012-2014 by Joel Berger
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.

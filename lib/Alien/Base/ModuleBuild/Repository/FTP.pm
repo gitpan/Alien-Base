@@ -3,7 +3,7 @@ package Alien::Base::ModuleBuild::Repository::FTP;
 use strict;
 use warnings;
 
-our $VERSION = '0.003';
+our $VERSION = '0.004';
 $VERSION = eval $VERSION;
 
 use parent 'Alien::Base::ModuleBuild::Repository';
@@ -48,7 +48,7 @@ sub get_file {
 
   $ftp->get( $file ) or croak "Download failed: " . $ftp->message();
 
-  return 1;
+  return $file;
 }
 
 sub list_files {
