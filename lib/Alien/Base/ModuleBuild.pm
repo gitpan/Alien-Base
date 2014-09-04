@@ -3,7 +3,7 @@ package Alien::Base::ModuleBuild;
 use strict;
 use warnings;
 
-our $VERSION = '0.004';
+our $VERSION = '0.004_01';
 $VERSION = eval $VERSION;
 
 use parent 'Module::Build';
@@ -17,6 +17,7 @@ use Archive::Extract;
 use Sort::Versions;
 use List::MoreUtils qw/uniq first_index/;
 use ExtUtils::Installed;
+use File::Copy qw/move/;
 
 use Alien::Base::PkgConfig;
 use Alien::Base::ModuleBuild::Cabinet;
@@ -65,7 +66,7 @@ __PACKAGE__->add_property( alien_selection_method => 'newest' );
 # alien_build_commands: arrayref of commands for building
 __PACKAGE__->add_property( 
   alien_build_commands => 
-  default => [ '%pconfigure --prefix=%s', 'make' ],
+  default => [ '%c --prefix=%s', 'make' ],
 );
 
 # alien_test_commands: arrayref of commands for testing the library
@@ -101,6 +102,9 @@ __PACKAGE__->add_property( 'alien_repository'         => {} );
 __PACKAGE__->add_property( 'alien_repository_default' => {} );
 __PACKAGE__->add_property( 'alien_repository_class'   => {} );
 
+# alien_isolate_dynamic
+__PACKAGE__->add_property( 'alien_isolate_dynamic' => 0 );
+__PACKAGE__->add_property( 'alien_autoconf_with_pic' => 1 );
 
 ################
 #  ConfigData  #
@@ -131,6 +135,17 @@ sub new {
 
   # setup additional temporary directories, and yes we have to add File::ShareDir manually
   $self->_add_prereq( 'requires', 'File::ShareDir', '1.00' );
+
+  if (grep /(?<!\%)\%c/, @{ $self->alien_build_commands }) {
+    $self->config_data( 'autoconf' => 1 );
+  }
+
+  if ($^O eq 'MSWin32' && $self->config_data( 'autoconf')) {
+    $self->_add_prereq( 'build_requires', 'Alien::MSYS', '0' );
+    $self->config_data( 'msys' => 1 );
+  } else {
+    $self->config_data( 'msys' => 0 );
+  }
 
   # force newest for all automated testing 
   #TODO (this probably should be checked for "input needed" rather than blindly assigned)
@@ -232,7 +247,7 @@ sub ACTION_alien_code {
 
     my $file = $cabinet->files->[0];
     $version = $file->version;
-    $self->config_data( version => $version ); # Temporary setting, may be overridden later
+    $self->config_data( alien_version => $version ); # Temporary setting, may be overridden later
 
     print "Downloading File: " . $file->filename . " ... ";
     my $filename = $file->get;
@@ -323,6 +338,25 @@ sub ACTION_alien_install {
     local $CWD = $self->config_data( 'working_directory' );
     print "Installing library to $CWD ... ";
     $self->alien_do_commands('install') or die "Failed\n";
+    print "Done\n";
+  }
+  
+  if ( $self->alien_isolate_dynamic ) {
+    local $CWD = $self->alien_library_destination;
+    print "Isolating dynamic libraries ... ";
+    mkdir 'dynamic' unless -d 'dynamic';
+    foreach my $dir (qw( bin lib )) {
+      next unless -d $dir;
+      opendir(my $dh, $dir);
+      my @dlls = grep { /\.so/ || /\.(dylib|la|dll|dll\.a)$/ } grep !/^\./, readdir $dh;
+      closedir $dh;
+      foreach my $dll (@dlls) {
+        my $from = File::Spec->catfile($dir, $dll);
+        my $to   = File::Spec->catfile('dynamic', $dll);
+        unlink $to if -e $to;
+        move($from, $to);
+      }
+    }
     print "Done\n";
   }
 
@@ -459,6 +493,18 @@ sub alien_detect_blib_scheme {
 #  Build Methods  #
 ###################
 
+sub _msys_do_system {
+  my $self = shift;
+  my $command = shift;
+  
+  if ($self->config_data( 'msys' )) {
+    require Alien::MSYS;
+    return Alien::MSYS::msys(sub { $self->do_system( $command ) });
+  }
+  
+  $self->do_system( $command );
+}
+
 sub alien_do_commands {
   my $self = shift;
   my $phase = shift;
@@ -468,7 +514,7 @@ sub alien_do_commands {
 
   foreach my $command (@$commands) {
 
-    my %result = $self->do_system( $command );
+    my %result = $self->_msys_do_system( $command );
     unless ($result{success}) {
       carp "External command ($result{command}) failed! Error: $?\n";
       return 0;
@@ -516,6 +562,7 @@ sub alien_interpolate {
   my ($string) = @_;
 
   my $prefix = $self->alien_exec_prefix;
+  my $configure = $self->alien_configure;
   my $share  = $self->alien_library_destination;
   my $name   = $self->alien_name || '';
 
@@ -524,6 +571,8 @@ sub alien_interpolate {
   $string =~ s/(?<!\%)\%s/$share/g;
   #   local exec prefix (ph: %p)
   $string =~ s/(?<!\%)\%p/$prefix/g;
+  #   correct incantation for configure on platform
+  $string =~ s/(?<!\%)\%c/$configure/g;
   #   library name (ph: %n)
   $string =~ s/(?<!\%)\%n/$name/g;
   #   current interpreter ($^X) (ph: %x)
@@ -533,7 +582,7 @@ sub alien_interpolate {
   # Version, but only if needed.  Complain if needed and not yet
   # stored.
   if ($string =~ /(?<!\%)\%v/) {
-    my $version = $self->config_data( 'version' );
+    my $version = $self->config_data( 'alien_version' );
     if ( ! defined( $version ) ) {
       carp "Version substution requested but unable to identify";
     } else {
@@ -554,6 +603,20 @@ sub alien_exec_prefix {
   } else {
     return './';
   }
+}
+
+sub alien_configure {
+  my $self = shift;
+  my $configure;
+  if ($self->config_data( 'msys' )) {
+    $configure = 'sh configure';
+  } else {
+    $configure = './configure';
+  }
+  if ($self->alien_autoconf_with_pic) {
+    $configure .= ' --with-pic';
+  }
+  $configure;
 }
 
 ########################

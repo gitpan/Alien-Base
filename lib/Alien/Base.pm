@@ -5,16 +5,18 @@ use warnings;
 
 use Alien::Base::PkgConfig;
 
-our $VERSION = '0.004';
+our $VERSION = '0.004_01';
 $VERSION = eval $VERSION;
 
 use Carp;
 use DynaLoader ();
 
 use File::ShareDir ();
+use File::Spec;
 use Scalar::Util qw/blessed/;
 use Capture::Tiny 0.17 qw/capture_merged/;
 use Text::ParseWords qw/shellwords/;
+use Perl::OSType qw/os_type/;
 
 sub import {
   my $class = shift;
@@ -30,12 +32,12 @@ sub import {
     \%{ $class . "::AlienLoaded" };
   };
 
-  my @libs = shellwords( $class->libs );
+  my @libs = $class->split_flags( $class->libs );
 
   my @L = grep { s/^-L// } @libs;
   my @l = grep { /^-l/ } @libs;
 
-  push @DynaLoader::dl_library_path, @L;
+  unshift @DynaLoader::dl_library_path, @L;
 
   my @libpaths;
   foreach my $l (@l) {
@@ -165,6 +167,44 @@ sub config {
   return $config->config(@_);
 }
 
+# helper method to split flags based on the OS
+sub split_flags {
+  my ($class, $line) = @_;
+  my $os = os_type();
+  if( $os eq 'Windows' ) {
+    $class->split_flags_windows($line);
+  } else {
+    # $os eq 'Unix'
+    $class->split_flags_unix($line);
+  }
+}
+
+sub split_flags_unix {
+  my ($class, $line) = @_;
+  shellwords($line);
+}
+
+sub split_flags_windows {
+  # NOTE a better approach would be to write a function that understands cmd.exe metacharacters.
+  my ($class, $line) = @_;
+
+  # Double the backslashes so that when they are unescaped by shellwords(),
+  # they become a single backslash. This should be fine on Windows since
+  # backslashes are not used to escape metacharacters in cmd.exe.
+  $line =~ s,\\,\\\\,g;
+  shellwords($line);
+}
+
+sub dynamic_libs {
+  my ($class) = @_;
+  my $dir = File::Spec->catfile($class->dist_dir, 'dynamic');
+  return unless -d $dir;
+  opendir(my $dh, $dir);
+  my @dlls = grep { /\.so/ || /\.(dylib|dll)$/ } grep !/^\./, readdir $dh;
+  closedir $dh;
+  grep { ! -l $_ } map { File::Spec->catfile($dir, $_) } @dlls;
+}
+
 1;
 
 __END__
@@ -224,6 +264,14 @@ Joel Berger, E<lt>joel.a.berger@gmail.comE<gt>
 =item Christian Walde (Mithaldu)
 
 =item Brian Wightman (MidLifeXis)
+
+=item Graham Ollis (plicease)
+
+=item Zaki Mughal (zmughal)
+
+=item mohawk2
+
+=back
 
 =head1 COPYRIGHT AND LICENSE
 

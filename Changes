@@ -1,5 +1,25 @@
 Revision history for Perl module Alien::Base.
 
+  - Libraries in the share directory are preferred over the system library
+    if that is what was used during install of the Alien module (plicease++ gh#22)
+  - Better handling of paths on Windows (zmughal++ gh#41)
+  - Fix test failure when pkg-config is not available (mohawk2++ gh#44)
+  - Support for autotools on Windows (MSWin32, but not cygwin) (plicease++ gh#46)
+  - Alien::MSYS will be injected as a build_requires on Windows if autotools is detected
+  - "%c" can now be used as a platform independent way of running autotool based
+    "configure" script
+  - The new default for build uses "%c" instead of "%pconfigure"
+  - Added property alien_isolate_dynamic which allows an Alien author to
+    avoid using dynamic libraries when building XS modules (plicease gh#51)
+  - Added dynamic_libs which returns a list of dynamic libraries (.dll, .so or
+    .dylib depending on platform) which can be used for FFI modules (see FFI::Raw)
+    (plicease gh#51)
+  - Added support for LWP as an alternative to HTTP::Tiny (preaction++ gh#24)
+  - Added support for content-disposition HTTP header to determine correct filename
+    and determine format from that (rsimoes++ gh#27)
+  - By default run autotools style configure scripts with --with-pic and add
+    alien_autoconf_with_pic property to allow disabling that (plicease gh#47)
+
 0.004  Mar 5, 2014
   - Added version token to the interpolator (MidLifeXis++)
   - Fixed broken test (MidLifeXis++)

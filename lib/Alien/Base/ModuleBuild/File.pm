@@ -3,7 +3,7 @@ package Alien::Base::ModuleBuild::File;
 use strict;
 use warnings;
 
-our $VERSION = '0.004';
+our $VERSION = '0.004_01';
 $VERSION = eval $VERSION;
 
 sub new {
@@ -22,9 +22,14 @@ sub has_version {
 
 sub get {
   my $self = shift;
-  my $filename = $self->filename;
-  $filename = $self->repository->get_file($filename);
-  return $filename;
+  my $repo = $self->repository;
+
+  my $filename = $repo->get_file($self->filename);
+  if ( my $new_filename = $repo->{new_filename} ) {
+    $filename = $self->{filename} = $new_filename;
+  }
+
+  return $self->filename;
 }
 
 sub platform   { shift->{platform}   }
