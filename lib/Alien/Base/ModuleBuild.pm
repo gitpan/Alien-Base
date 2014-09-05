@@ -3,7 +3,7 @@ package Alien::Base::ModuleBuild;
 use strict;
 use warnings;
 
-our $VERSION = '0.004_01';
+our $VERSION = '0.004_02';
 $VERSION = eval $VERSION;
 
 use parent 'Module::Build';
@@ -83,7 +83,7 @@ __PACKAGE__->add_property(
 );
 
 # alien_version_check: command to execute to check if install/version
-__PACKAGE__->add_property( alien_version_check => 'pkg-config --modversion %n' );
+__PACKAGE__->add_property( alien_version_check => Alien::Base::PkgConfig->pkg_config_command . ' --modversion %n' );
 
 # pkgconfig-esque info, author provides these by hand for now, will parse .pc file eventually
 __PACKAGE__->add_property( 'alien_provides_cflags' );
@@ -251,6 +251,7 @@ sub ACTION_alien_code {
 
     print "Downloading File: " . $file->filename . " ... ";
     my $filename = $file->get;
+    croak "Error downloading file" unless $filename;
     print "Done\n";
 
     print "Extracting Archive ... ";

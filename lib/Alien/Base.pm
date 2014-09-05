@@ -5,7 +5,7 @@ use warnings;
 
 use Alien::Base::PkgConfig;
 
-our $VERSION = '0.004_01';
+our $VERSION = '0.004_02';
 $VERSION = eval $VERSION;
 
 use Carp;
@@ -100,7 +100,7 @@ sub _keyword {
   # use pkg-config if installed system-wide
   if ($self->install_type('system')) {
     my $name = $self->config('name');
-    my $command = "pkg-config --\L$keyword\E $name";
+    my $command = Alien::Base::PkgConfig->pkg_config_command . " --\L$keyword\E $name";
 
     chomp ( my $pcdata = capture_merged { system( $command ) } );
     croak "Could not call pkg-config: $!" if $!;
@@ -270,6 +270,8 @@ Joel Berger, E<lt>joel.a.berger@gmail.comE<gt>
 =item Zaki Mughal (zmughal)
 
 =item mohawk2
+
+=item Vikas N Kumar (vikasnkumar)
 
 =back
 

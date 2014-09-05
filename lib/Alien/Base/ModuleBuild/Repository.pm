@@ -3,7 +3,7 @@ package Alien::Base::ModuleBuild::Repository;
 use strict;
 use warnings;
 
-our $VERSION = '0.004_01';
+our $VERSION = '0.004_02';
 $VERSION = eval $VERSION;
 
 use Carp;
@@ -63,6 +63,8 @@ sub probe {
   if ($self->{exact_filename} and $self->{exact_version}) {
     # if filename and version provided, use a specific version
     $files[0]->{version} = $self->{exact_version};
+    $files[0]->{sha1} = $self->{sha1} if defined $self->{sha1};
+    $files[0]->{sha256} = $self->{sha256} if defined $self->{sha256};
   } elsif ($pattern and pattern_has_capture_groups($pattern)) {
     foreach my $file (@files) {
       $file->{version} = $1 
