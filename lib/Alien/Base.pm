@@ -5,7 +5,7 @@ use warnings;
 
 use Alien::Base::PkgConfig;
 
-our $VERSION = '0.004_02';
+our $VERSION = '0.004_03';
 $VERSION = eval $VERSION;
 
 use Carp;
@@ -55,7 +55,7 @@ sub import {
 
   push @DynaLoader::dl_resolve_using, @libpaths;
 
-  my @librefs = map { DynaLoader::dl_load_file( $_, 0x01 ) } @libpaths;
+  my @librefs = map { DynaLoader::dl_load_file( $_, 0x01 ) } grep !/\.(a|lib)$/, @libpaths;
   push @DynaLoader::dl_librefs, @librefs;
 
 }
@@ -247,7 +247,7 @@ L<Alien>
 
 =head1 SOURCE REPOSITORY
 
-L<http://github.com/jberger/Alien-Base>
+L<http://github.com/Perl5-Alien/Alien-Base>
 
 =head1 AUTHOR
 

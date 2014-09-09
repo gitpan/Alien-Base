@@ -3,7 +3,7 @@ package Alien::Base::ModuleBuild;
 use strict;
 use warnings;
 
-our $VERSION = '0.004_02';
+our $VERSION = '0.004_03';
 $VERSION = eval $VERSION;
 
 use parent 'Module::Build';
@@ -323,8 +323,13 @@ sub ACTION_alien_install {
 
   return if $self->config_data( 'install_type' ) eq 'system';
 
+  my $destdir = $self->destdir;
+
   {
     my $target = $self->alien_library_destination;
+    # prefix the target directory with $destdir so that package builds
+    # can install into a fake root
+    $target = File::Spec->catdir($destdir, $target) if defined $destdir;
     local $CWD = $target;
 
     # The only form of introspection that exists is to see that the README file
@@ -337,13 +342,19 @@ sub ACTION_alien_install {
 
   {
     local $CWD = $self->config_data( 'working_directory' );
+    local $ENV{DESTDIR} = $ENV{DESTDIR};
+    $ENV{DESTDIR} = $destdir if defined $destdir;
     print "Installing library to $CWD ... ";
     $self->alien_do_commands('install') or die "Failed\n";
     print "Done\n";
   }
   
   if ( $self->alien_isolate_dynamic ) {
-    local $CWD = $self->alien_library_destination;
+    my $target = $self->alien_library_destination;
+    # prefix the target directory with $destdir so that package builds
+    # can install into a fake root
+    $target = File::Spec->catdir($destdir, $target) if defined $destdir;
+    local $CWD = $target;
     print "Isolating dynamic libraries ... ";
     mkdir 'dynamic' unless -d 'dynamic';
     foreach my $dir (qw( bin lib )) {
@@ -462,6 +473,7 @@ sub alien_library_destination {
 
   my $dist_name = $self->dist_name;
   my $dest = File::Spec->catdir( $lib_dir, qw/auto share dist/, $dist_name );
+  $dest =~ s{\\}{/}g if $^O eq 'MSWin32';
   return $dest;
 }
 
@@ -718,7 +730,7 @@ sub alien_find_lib_paths {
   my @files =     
     map { File::Spec->abs2rel( $_, $dir ) }  # make relative to $dir
     grep { ! -d }
-    @{ $self->rscan_dir( $dir, $file_pattern ) };
+    @{ $self->_rscan_destdir( $dir, $file_pattern ) };
 
   my (@so_files, @lib_paths, @inc_paths);
   for (@files) {
@@ -756,12 +768,25 @@ sub alien_refresh_packlist {
   my $self = shift;
   my $dir = shift || croak "Must specify a directory to include in packlist";
 
-  my $inst = ExtUtils::Installed->new;
+  return unless $self->create_packlist;
+
+  my %installed_args;
+  $installed_args{extra_libs} = [map { File::Spec->catdir($self->destdir, $_) } @INC]
+    if defined $self->destdir;
+
+  my $inst = ExtUtils::Installed->new( %installed_args );
   my $packlist = $inst->packlist( $self->module_name );
   print "Using " .  $packlist->packlist_file . "\n";
 
   my $changed = 0;
-  my $files = $self->rscan_dir($dir);
+  my $files = $self->_rscan_destdir($dir);
+  # This is kind of strange, but MB puts the destdir paths in the
+  # packfile, when arguably it should not.  Usually you will want 
+  # to turn off packlists when you you are building an rpm anyway,
+  # but for the sake of maximum compat with MB we add the destdir
+  # back in after _rscan_destdir has stripped it out.
+  $files = [ map { File::Spec->catdir($self->destdir, $_) } @$files ]
+    if defined $self->destdir;
   for my $file (@$files) {
     next if $packlist->{$file};
     print "Adding $file to packlist\n"; 
@@ -770,6 +795,16 @@ sub alien_refresh_packlist {
   };
 
   $packlist->write if $changed;
+}
+
+sub _rscan_destdir {
+  my($self, $dir, $pattern) = @_;
+  my $destdir = $self->destdir;
+  $dir = File::Spec->catdir($destdir, $dir) if defined $destdir;
+  $dir =~ s{\\}{/}g if $^O eq 'MSWin32';
+  my $files = $self->rscan_dir($dir, $pattern);
+  $files = [ map { s/^$destdir//; $_ } @$files ] if defined $destdir;
+  $files;
 }
 
 1;
@@ -848,7 +883,7 @@ L<Alien::Base>
 
 =head1 SOURCE REPOSITORY
 
-L<http://github.com/jberger/Alien-Base>
+L<http://github.com/Perl5-Alien/Alien-Base>
 
 =head1 AUTHOR
 
