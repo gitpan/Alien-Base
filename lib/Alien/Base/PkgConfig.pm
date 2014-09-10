@@ -3,7 +3,7 @@ package Alien::Base::PkgConfig;
 use strict;
 use warnings;
 
-our $VERSION = '0.004_04';
+our $VERSION = '0.004_05';
 $VERSION = eval $VERSION;
 
 use Carp;
@@ -27,6 +27,7 @@ sub new {
   my ($name, $dir) = fileparse $path, '.pc';
 
   $dir = File::Spec->catdir( $dir );  # remove trailing slash
+  $dir =~ s{\\}{/}g;
 
   my $self = {
     package  => $name,
