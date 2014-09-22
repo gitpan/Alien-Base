@@ -24,6 +24,7 @@ my %build_args = (
     'File::ShareDir'   => 0,
     'Archive::Extract' => 0,
     'HTTP::Tiny'       => 0,
+    'Text::ParseWords' => '3.26',
   },
   test_requires => {
     'Test::More'       => 0.94,
@@ -49,8 +50,9 @@ my %build_args = (
 );
 
 unless (`pkg-config --version` && $? == 0) {
-  $build_args{'requires'}->{'PkgConfig'} = 0;
+  $build_args{'requires'}->{'PkgConfig'} = '0.07520';
 }
 
 my $builder = Module::Build->new(%build_args);
+$builder->add_to_cleanup( '_Inline' );
 $builder->create_build_script;

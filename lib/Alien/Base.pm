@@ -5,7 +5,7 @@ use warnings;
 
 use Alien::Base::PkgConfig;
 
-our $VERSION = '0.005';
+our $VERSION = '0.005_01';
 $VERSION = eval $VERSION;
 
 use Carp;
@@ -81,6 +81,14 @@ Or you can use it from an FFI module:
  my($dll) = Alien::MyLibrary->dynamic_libs;
  
  FFI::Raw->new($dll, 'my_library_function', FFI::Raw::void);
+
+You can even use it with L<Inline> (C and C++ languages are supported):
+
+ package MyLibrary::Inline;
+ 
+ use Alien::MyLibrary;
+ use Inline with => 'Alien::MyLibrary';
+ ...
 
 =head1 DESCRIPTION
 
@@ -242,6 +250,7 @@ sub _keyword {
     my $name = $self->config('name');
     my $command = Alien::Base::PkgConfig->pkg_config_command . " --\L$keyword\E $name";
 
+    $! = 0;
     chomp ( my $pcdata = capture_merged { system( $command ) } );
     croak "Could not call pkg-config: $!" if $!;
 
@@ -365,6 +374,40 @@ sub dynamic_libs {
   my @dlls = grep { /\.so/ || /\.(dylib|dll)$/ } grep !/^\./, readdir $dh;
   closedir $dh;
   grep { ! -l $_ } map { File::Spec->catfile($dir, $_) } @dlls;
+}
+
+=head2 inline_auto_include
+
+ my(@headers) = Alien::MyLibrary->inline_auto_include;
+
+List of header files to automatically include in inline C and C++
+code when using L<Inline::C> or L<Inline::CPP>.  This is provided
+as a public interface primarily so that it can be overidden at run
+time.  This can also be specified in your C<Build.PL> with 
+L<Alien::Base::ModuleBuild> using the C<alien_inline_auto_include>
+property.
+
+=cut
+
+sub inline_auto_include {
+  my ($class) = @_;
+  return [] unless $class->config('inline_auto_include');
+  $class->config('inline_auto_include')
+}
+
+sub Inline {
+  my ($class, $language) = @_;
+  return if $language !~ /^(C|CPP)$/;
+  my $config = {
+    CCFLAGSEX    => $class->cflags,
+    LIBS         => $class->libs,
+  };
+  
+  if (@{ $class->inline_auto_include } > 0) {
+    $config->{AUTO_INCLUDE} = join "\n", map { "#include \"$_\"" } @{ $class->inline_auto_include };
+  }
+  
+  $config;
 }
 
 1;
