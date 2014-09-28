@@ -5,7 +5,7 @@ use warnings;
 
 use Alien::Base::PkgConfig;
 
-our $VERSION = '0.005_03';
+our $VERSION = '0.005_04';
 $VERSION = eval $VERSION;
 
 use Carp;
@@ -36,7 +36,7 @@ Alien::Base - Base classes for Alien:: modules
 (For a synopsis of the C<Build.PL> that comes with your
 C<Alien::MyLibrary> see L<Alien::Base::ModuleBuild>)
 
-Then an C<MyLibrary::XS> can use C<Alien::MyLibrary> in their C<Build.PL>:
+Then a C<MyLibrary::XS> can use C<Alien::MyLibrary> in its C<Build.PL>:
 
  use Alien::MyLibrary;
  use Module::Build 0.28; # need at least 0.28
@@ -50,7 +50,7 @@ Then an C<MyLibrary::XS> can use C<Alien::MyLibrary> in their C<Build.PL>:
  
  $builder->create_build_script;
 
-Or if you prefer L<ExtUtils::MakeMaker>, the C<Makefile.PL>:
+Or if you prefer L<ExtUtils::MakeMaker>, in its C<Makefile.PL>:
 
  use Alien::MyLibrary
  use ExtUtils::MakeMaker;
@@ -311,7 +311,7 @@ sub pkgconfig {
 
 Returns the configuration data as determined during the install
 of L<Alien::MyLibrary>.  For the appropriate config keys, see 
-L<Alien::Base::ModuleBuild::API#CONFIG DATA>.
+L<Alien::Base::ModuleBuild::API#CONFIG-DATA>.
 
 =cut
 
@@ -375,6 +375,24 @@ sub dynamic_libs {
   my @dlls = grep { /\.so/ || /\.(dylib|dll)$/ } grep !/^\./, readdir $dh;
   closedir $dh;
   grep { ! -l $_ } map { File::Spec->catfile($dir, $_) } @dlls;
+}
+
+=head2 bin_dir
+
+ my(@dir) = Alien::MyLibrary->bin_dir
+
+Returns a list of directories with executables in them.  For a C<system>
+install this will be an empty list.  For a C<share> install this will be
+a directory under C<dist_dir> named C<bin> if it exists.  You may wish
+to override the default behavior if you have executables or scripts that
+get installed into non-standard locations.
+
+=cut
+
+sub bin_dir {
+  my ($class) = @_;
+  my $dir = File::Spec->catfile($class->dist_dir, 'bin');
+  -d $dir ? ($dir) : ();
 }
 
 =head2 inline_auto_include

@@ -6,7 +6,9 @@ use Test::More;
 use Alien::Base::ModuleBuild;
 use File::chdir;
 use File::Temp ();
-use File::Path qw( rmtree );
+use File::Path qw( rmtree mkpath );
+use Capture::Tiny qw( capture );
+use FindBin ();
 
 my $dir = File::Temp->newdir;
 local $CWD = "$dir";
@@ -17,7 +19,19 @@ my %basic = (
   dist_author  => 'Joel Berger',
 );
 
-sub builder { return Alien::Base::ModuleBuild->new( %basic, @_ ) }
+sub output_to_note (&) {
+  my $sub = shift;
+  my($out, $err) = capture { $sub->() };
+  note "[out]\n$out" if $out;
+  note "[err]\n$err" if $err;
+}
+
+sub builder {
+  my @args = @_;
+  my $builder;
+  output_to_note { $builder = Alien::Base::ModuleBuild->new( %basic, @args ) };
+  $builder;
+}
 
 ###########################
 #  Temporary Directories  #
@@ -36,7 +50,7 @@ subtest 'default temp and share' => sub {
   ok( -d '_alien', "Creates _alien dir");
   ok( -d '_share', "Creates _share dir");
 
-  $builder->depends_on('clean');
+  output_to_note { $builder->depends_on('clean') };
   ok( ! -d '_alien', "Removes _alien dir");
   ok( ! -d '_share', "Removes _share dir");
 
@@ -55,7 +69,7 @@ subtest 'override temp and share' => sub {
   ok( -d '_test_temp', "Creates _test_temp dir");
   ok( -d '_test_share', "Creates _test_temp dir");
 
-  $builder->depends_on('clean');
+  output_to_note { $builder->depends_on('clean') };
   ok( ! -d '_test_temp', "Removes _test_temp dir");
   ok( ! -d '_test_share', "Removes _test_share dir");
 
@@ -112,18 +126,75 @@ EOF
 
   my $share = $builder->alien_library_destination;
   
-  $builder->depends_on('build');
+  output_to_note { $builder->depends_on('build') };
 
   $builder->destdir($destdir);  
   is $builder->destdir, $destdir, "destdir accessor";
   
-  $builder->depends_on('install');
+  output_to_note { $builder->depends_on('install') };
 
   my $foo_script = File::Spec->catfile($destdir, $share, 'bin', 'foo');
   ok -e $foo_script, "script installed in destdir $foo_script";
     
   unlink 'build.pl';
   rmtree [qw/ _alien  _share  blib  src /], 0, 0;
+};
+
+subtest 'alien_bin_requires' => sub {
+
+  my $bin = File::Spec->catdir($FindBin::Bin, 'builder', 'bin');
+  note "bin = $bin";
+
+  eval q{
+    package Alien::Libfoo;
+
+    our $VERSION = '1.00';
+    
+    $INC{'Alien/Libfoo.pm'} = __FILE__;
+
+    package Alien::ToolFoo;
+
+    our $VERSION = '0.37';
+    
+    $INC{'Alien/ToolFoo.pm'} = __FILE__;
+    
+    sub bin_dir {
+      ($bin)
+    }
+  };
+
+  my $builder = builder(
+    alien_name => 'foobarbazfakething',
+    build_requires => {
+      'Alien::Libfoo' => '1.00',
+    },
+    alien_bin_requires => {
+      'Alien::ToolFoo' => '0.37',
+    },
+  );
+
+  is $builder->build_requires->{"Alien::Libfoo"}, '1.00',  'normal build requires';
+  is $builder->build_requires->{"Alien::ToolFoo"}, '0.37', 'alien_bin_requires implies a build requires';
+
+  my %status;
+  output_to_note { 
+    local $CWD;
+    my $dir = File::Spec->catdir(qw( _alien buildroot ));
+    mkpath($dir, { verbose => 0 });
+    $CWD = $dir;
+    %status = $builder->_env_do_system('privateapp');
+  };
+  ok $status{success}, 'found privateapp in path';
+  if($^O eq 'MSWin32') {
+    ok -e File::Spec->catfile(qw( _alien env.cmd )), 'cmd shell helper';
+    ok -e File::Spec->catfile(qw( _alien env.bat )), 'bat shell helper';
+    ok -e File::Spec->catfile(qw( _alien env.ps1 )), 'power shell helper';
+  } else {
+    ok -e File::Spec->catfile(qw( _alien env.sh )), 'bourne shell helper';
+    ok -e File::Spec->catfile(qw( _alien env.csh )), 'c shell helper';
+  }
+
+  rmtree [qw/ _alien /], 0, 0;
 };
 
 done_testing;
