@@ -5,7 +5,7 @@ use warnings;
 
 use Alien::Base::PkgConfig;
 
-our $VERSION = '0.005_05';
+our $VERSION = '0.005_06';
 $VERSION = eval $VERSION;
 
 use Carp;
@@ -60,6 +60,16 @@ Or if you prefer L<ExtUtils::MakeMaker>, in its C<Makefile.PL>:
    CFLAGS => Alien::MyLibrary->cflags,
    LIBS   => ALien::MyLibrary->libs,
    ...
+ );
+
+Or if you are using L<ExtUtils::Depends>:
+
+ use ExtUtils::MakeMaker;
+ use ExtUtils::Depends;
+ my $eud = ExtUtils::Depends->new(qw( MyLibrary::XS Alien::MyLibrary ));
+ WriteMakefile(
+   ...
+   $eud->get_makefile_vars
  );
 
 In your C<MyLibrary::XS> module, you may need to use L<Alien::MyLibrary> if
