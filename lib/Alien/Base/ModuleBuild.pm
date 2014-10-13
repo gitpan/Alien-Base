@@ -3,7 +3,7 @@ package Alien::Base::ModuleBuild;
 use strict;
 use warnings;
 
-our $VERSION = '0.005_06';
+our $VERSION = '0.005_07';
 $VERSION = eval $VERSION;
 
 use parent 'Module::Build';
@@ -247,6 +247,14 @@ package $module\::Install::Files;
 require $module;
 sub Inline { shift; $module->Inline(\@_) }
 1;
+
+=begin Pod::Coverage
+
+  Inline
+
+=end Pod::Coverage
+
+=cut
 EOF
     close $fh;
   }
@@ -498,7 +506,7 @@ sub alien_validate_repo {
 
   # if $valid is src, check for c compiler
   if ($platform eq 'src') {
-    return $self->have_c_compiler;
+    return !$repo->{c_compiler_required} || $self->have_c_compiler;
   }
 
   # $valid is a string (OS) to match against
@@ -617,6 +625,8 @@ sub alien_do_commands {
   my $attr = "alien_${phase}_commands";
   my $commands = $self->$attr();
 
+  print "\n+ cd $CWD\n";
+
   foreach my $command (@$commands) {
 
     my %result = $self->_env_do_system( $command );
@@ -642,6 +652,8 @@ sub do_system {
   my $initial_cwd = $CWD;
 
   my @args = map { $self->alien_interpolate($_) } @_;
+
+  print "+ @args\n";
 
   my ($out, $err, $success) = 
     $verbose

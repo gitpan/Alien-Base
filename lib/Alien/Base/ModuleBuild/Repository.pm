@@ -3,7 +3,7 @@ package Alien::Base::ModuleBuild::Repository;
 use strict;
 use warnings;
 
-our $VERSION = '0.005_06';
+our $VERSION = '0.005_07';
 $VERSION = eval $VERSION;
 
 use Carp;
@@ -16,6 +16,9 @@ sub new {
   my (%self) = ref $_[0] ? %{ shift() } : @_;
 
   my $obj = bless \%self, $class;
+
+  $obj->{c_compiler_required} = 1
+    unless defined $obj->{c_compiler_required};
 
   return $obj;
 }
