@@ -5,7 +5,7 @@ use warnings;
 
 use Alien::Base::PkgConfig;
 
-our $VERSION = '0.006_02';
+our $VERSION = '0.006_03';
 $VERSION = eval $VERSION;
 
 use Carp;
@@ -508,7 +508,9 @@ L<Alien>
 
 =head1 AUTHOR
 
-Joel Berger, E<lt>joel.a.berger@gmail.comE<gt>
+Original author: Joel Berger, E<lt>joel.a.berger@gmail.comE<gt>
+
+Current maintainer: Graham Ollis E<lt>plicease@cpan.orgE<gt> and the L<Alien::Base> team
 
 =head1 CONTRIBUTORS
 
@@ -534,7 +536,7 @@ Joel Berger, E<lt>joel.a.berger@gmail.comE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2012-2014 by Joel Berger
+Copyright (C) 2012-2015 by Joel Berger
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
